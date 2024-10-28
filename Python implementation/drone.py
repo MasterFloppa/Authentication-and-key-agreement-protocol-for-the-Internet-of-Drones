@@ -146,9 +146,9 @@ def DroneRegistration_Authenticationplus():
                     "RIDk": RIDk.hex(),           # Convert RIDk to hex string
                 }
 
-                # Send to Control Center
-                print("Drone: Sending M3 to Control Center")
-                SecureSend(drone_socket, M3)
+                # Send to Gz (Authentication confirmation)
+                print("Drone: Sending M3 to Gz")
+                SecureSend(gz_socket, M3)
 
 
 # Example usage

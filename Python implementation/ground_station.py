@@ -97,8 +97,48 @@ def GroundStationOperations():
                     "m2b": hex(m2b),
                     "tj": tj
                 }
-
                 SecureSend(gz_drone_conn, M2)
+
+                # Step 16: Receive verification from the drone
+                M3 = json.loads(gz_drone_conn.recv(1024).decode())
+                # check if empty
+                if not M3:
+                    print("No data received")
+                    break
+                else:
+                    print(f"Gz: Received data from Drone: {M3}")
+                    
+
+                stu = bytes.fromhex(M3["stu"])
+                s_prime_tp = M3["s_prime_tp"]
+                restuk = bytes.fromhex(M3["restuk"])
+                DTk = M3["DTk"]
+                RIDk = bytes.fromhex(M3["RIDk"])
+                GIDz = bytes.fromhex(M3["GIDz"])
+                restik = bytes.fromhex(M3["restik"])
+                chetuk = bytes.fromhex(M3["chetuk"])
+                PIDtk = bytes.fromhex(M3["PIDtk"])
+                
+                m3a = int(M3["m3a"], 16)
+                m3b = int(M3["m3b"], 16)
+                m3c = int(M3["m3c"], 16)    
+                m3d = int(M3["m3d"], 16)
+                tu = M3["tu"]
+
+
+                stu_prime = m3a ^ int.from_bytes(H(GIDz.hex() + str(tu) + RIDk.hex() + restik.hex()), byteorder='big')
+                che_tu_k_prime = m3b ^ int.from_bytes(H(GIDz.hex() + str(tu) + RIDk.hex() + restik.hex() + str(stu_prime)), byteorder='big')
+                restu_k_prime = m3c ^ int.from_bytes(H(GIDz.hex() + str(tu) + RIDk.hex() + restik.hex() + str(stu_prime) + str(che_tu_k_prime)), byteorder='big')
+                PID_tu_k_prime = H(RIDk.hex() + str(restu_k_prime))
+                m3d_prime = int.from_bytes(H(GIDz.hex() + str(tu) + RIDk.hex()+restik.hex()+str(tu)+chetuk.hex()+restuk.hex()+PIDtk.hex()),byteorder='big')
+                if m3d_prime!=m3d:
+                    print("Authentication failed")
+                else:
+                    SK=int.from_bytes(H(stu.hex()), byteorder='big') \
+                    ^ int.from_bytes(H(str(s_prime_tp)), byteorder='big') \
+                    ^ int.from_bytes(H(restuk.hex()), byteorder='big') \
+                    ^ int.from_bytes(H(str(DTk)), byteorder='big')
+                    print("Session Key succesfully established {}".format(SK))
 
 
 # Example usage

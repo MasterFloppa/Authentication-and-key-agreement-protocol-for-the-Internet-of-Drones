@@ -1,1 +1,137 @@
-xyz
+role drone(Dk: agent, Gz: agent, Hash: hash_func, PUF: hash_func, SND, RCV: channel (dy)) 
+played_by Dk
+def= 
+    local
+        State: nat,
+        RIDk, ResTiK, PIDTiK, Dtx, GIDz, Che, Tj, RTj, M1a, M1b, M1c, M1, Tp, Tcur, STp: text,
+	M2a, M2b, M2, STu, CheTuK, ResTuK, PIDTuK, Tu, M3a, M3b, M3c, M3d, M3, SK: text
+
+    init
+        State := 0
+
+    transition
+        1. State = 0 /\ RCV(start) =|> State' := 2  /\
+
+            ResTiK' := PUF(Che) /\
+            PIDTiK' := Hash(RIDk.ResTiK') /\
+	    Dtx' := new() /\
+            Tj' := new() /\
+            RTj' := Hash(Tj') /\
+            M1a' := xor(RTj', Hash(GIDz.Tj'.RIDk.ResTiK')) /\
+            M1b' := xor(Dtx', Hash(GIDz.Tj'.RIDk.ResTiK'.RTj')) /\
+            M1c' := Hash(GIDz.Tj'.RIDk.ResTiK'.RTj'.Dtx') /\
+            M1' := {GIDz, Tj', PIDTiK', M1a', M1b', M1c', ResTiK'} /\
+
+            SND(M1')
+
+        2. State = 2 /\ RCV(PIDTiK'. Tp'. GIDz. M2a'. M2b') =|> State' := 4 /\
+
+            STp' := xor(M2a', Hash(RIDk.ResTiK.RTj.Tp'.GIDz)) /\
+            M2b' := Hash(RIDk.ResTiK.RTj.Tp'.GIDz.STp') /\
+		
+	    request(Gz, Dk, auth_2, M2b') /\
+
+            STu' := new() /\
+            CheTuK' := Hash(STu'.STp') /\
+            ResTuK' := Hash(CheTuK') /\
+            Tu' := new() /\
+            PIDTuK' := Hash(RIDk.ResTuK') /\
+            M3a' := xor(STu', Hash(GIDz.Tu'.RIDk.ResTiK)) /\
+            M3b' := xor(CheTuK', Hash(GIDz.Tu'.RIDk.ResTiK.STu')) /\
+            M3c' := xor(ResTuK', Hash(GIDz.Tu'.RIDk.ResTiK.STu'.CheTuK')) /\
+            M3d' := Hash(GIDz.Tu'.RIDk.ResTiK.STu'.CheTuK'.ResTuK'.PIDTuK') /\
+            M3' := {GIDz, Tu', PIDTiK', M3a', M3b', M3c', M3d'} /\
+
+            SND(M3') /\
+            
+            witness(Dk, Gz, auth_3, M3d') /\
+
+            SK' := xor(xor(Hash(STu'), Hash(STp')), xor (Hash(ResTuK'),Hash(Dtx))) /\
+
+            secret(SK, sec_key1, {Dk, Gz})
+
+end role
+
+role ground(Dk: agent, Gz: agent, Hash: hash_func, PUF: hash_func, SND, RCV: channel (dy)) 
+played_by Gz
+def= 
+    local
+        State: nat,
+        RIDk, ResTiK, PIDTiK, GIDz, Dtx, Che, Tj, RTj, M1a, M1b, M1c, M1, Tp, STp: text,
+	M2a, M2b, M2, STu, CheTuK, ResTuK, PIDTuK, Tu, M3a, M3b, M3c, M3d, M3, SK: text
+
+    init
+        State := 1
+
+    transition
+        1. State = 1 /\ RCV(GIDz.Tj'.PIDTiK'. M1a'. M1b'. M1c'. ResTiK') =|> State' := 3 /\
+
+            RTj' := xor(M1a', Hash(GIDz.Tj'.RIDk.ResTiK')) /\
+            Dtx' := xor(M1b', Hash(GIDz.Tj'.RIDk.ResTiK'.RTj')) /\
+            M1c' := Hash(GIDz.Tj'.RIDk.ResTiK'.RTj'.Dtx') /\
+            STp' := new() /\
+            Tp' := new() /\
+            M2a' := xor(STp', Hash(RIDk.ResTiK.RTj'.Tp'.GIDz)) /\
+            M2b' := Hash(RIDk.ResTiK.RTj'.Tp'.GIDz.STp') /\
+            M2' := {PIDTiK, Tp', GIDz, M2a', M2b'} /\
+	    
+	    SND(M2') /\
+            witness(Gz, Dk, auth_1, M2b') 
+            
+        2. State = 3 /\ RCV(GIDz. Tu'. PIDTiK'. M3a'. M3b'. M3c'. M3d') =|> State' := 5 /\
+
+            STu' := xor(M3a', Hash(GIDz.Tu'.RIDk.ResTiK)) /\
+            CheTuK' := xor(M3b', Hash(GIDz.Tu'.RIDk.ResTiK.STu')) /\
+            ResTuK' := xor(M3c', Hash(GIDz.Tu'.RIDk.ResTiK.STu'.CheTuK')) /\
+            PIDTuK' := Hash(RIDk.ResTuK') /\
+            M3d' := Hash(GIDz.Tu'.RIDk.ResTiK.STu'.CheTuK'.ResTuK'.PIDTuK') /\
+
+            SK' := xor(xor(Hash(STp), Hash(STu')), xor(Hash(ResTuK'), Hash(Dtx))) /\
+
+            request(Dk, Gz, auth_4, M3d') /\
+
+            secret(SK, sec_key2, {Dk, Gz})
+
+end role
+
+role session(A: agent, B: agent, H: hash_func, PUF: hash_func)
+def= 
+    local
+        SND1, RCV1: channel(dy)
+
+    composition
+        drone(A, B, H, PUF, SND1, RCV1) /\ 
+        ground(A, B, H, PUF, SND1, RCV1)
+
+end role
+
+role environment()
+def= 
+    const
+        a, b: agent,
+        h: hash_func,
+        puf: hash_func,
+        auth_1, auth_2, auth_3, auth_4, sec_key1, sec_key2: protocol_id
+
+    intruder_knowledge = {a, b, h}
+
+    composition
+        session(a, b, h, puf) /\
+        session(b, a, h, puf) /\
+        session(b, i, h, puf) /\
+        session(b, i, h, puf)
+
+end role
+
+goal
+    authentication_on auth_1
+    authentication_on auth_2
+    authentication_on auth_3
+    authentication_on auth_4
+
+    secrecy_of sec_key1
+    secrecy_of sec_key2
+
+end goal
+
+environment()

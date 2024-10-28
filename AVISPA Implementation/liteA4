@@ -119,7 +119,7 @@ def=
         session(a, b, h, puf) /\
         session(b, a, h, puf) /\
         session(b, i, h, puf) /\
-        session(b, i, h, puf)
+        session(a, i, h, puf)
 
 end role
 
